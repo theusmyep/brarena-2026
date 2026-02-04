@@ -1,0 +1,954 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+  // Configuração do Supabase
+  const SUPABASE_URL = '';
+  const SUPABASE_KEY = '';
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function checkAuth() {
+    const { data, error } = await supabase.auth.getSession();
+    // Para debugar:
+    // console.log("SESSION", data, error);
+
+    if (!data || !data.session || !data.session.user) {
+      // Não autenticado
+      window.location.href = "login.html";
+    }
+    // Se autenticado, segue normalmente...
+  }
+
+  // Garante que DOM está pronto
+  document.addEventListener("DOMContentLoaded", checkAuth);
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Infoprodutos</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #6366f1;
+            --accent: #818cf8;
+            --background: #f9fafb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+        }
+        .card {
+            background-color: var(--card);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .metric-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+        .period-selector button {
+            transition: all 0.3s ease;
+        }
+        .period-selector button.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+        .positive {
+            color: var(--success);
+        }
+        .negative {
+            color: var(--danger);
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 0.75rem;
+            background-color: #f3f4f6;
+        }
+        td {
+            padding: 0.75rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        tr:hover {
+            background-color: #f9fafb;
+        }
+        .product-rank {
+            font-weight: bold;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+        }
+        .rank-1 {
+            background-color: #fbbf24;
+            color: white;
+        }
+        .rank-2 {
+            background-color: #9ca3af;
+            color: white;
+        }
+        .rank-3 {
+            background-color: #d97706;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-8">
+    <!-- Dashboard Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 id="projectName" class="text-3xl font-bold text-gray-800">•••••••••••••••</h1>
+                <button 
+                    id="toggleProjectNameBtn" 
+                    type="button" 
+                    class="focus:outline-none"
+                    title="Ocultar/Mostrar nome do projeto"
+                >
+                    <i id="eyeIcon" class="fas fa-eye-slash"></i>
+                </button>
+            </div>
+            <p class="text-gray-500">Análise de desempenho de vendas</p>
+        </div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+      
+        <!-- Period Selector -->
+        <div class="period-selector mt-4 md:mt-0">
+            <div class="inline-flex rounded-md shadow-sm">
+              <button data-period="Hoje" class="active py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-l-md hover:bg-gray-100">
+                    Hoje
+                </button>
+              <button data-period="Ontem" class="py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-l-md hover:bg-gray-100">
+                    Ontem
+                </button>
+                <button data-period="7" class="py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-l-md hover:bg-gray-100">
+                    7 dias
+                </button>
+                <button data-period="14" class="py-2 px-4 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300 hover:bg-gray-100">
+                    14 dias
+                </button>
+                <button data-period="30" class="py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-r-md hover:bg-gray-100">
+                    30 dias
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- Faturamento Total -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Faturamento Total</p>
+                    <h2 class="metric-value" id="total-revenue">R$ 0,00</h2>
+                </div>
+                <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm" id="revenue-change">
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>0%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            </div>
+        </div>
+
+        <!-- Número de Vendas -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Número de Vendas</p>
+                    <h2 class="metric-value" id="total-sales">0</h2>
+                </div>
+                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm" id="sales-change">
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>0%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            </div>
+        </div>
+
+        <!-- Lucro -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Lucro</p>
+                    <h2 class="metric-value" id="total-profit">R$ 0,00</h2>
+                </div>
+                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm" id="profit-change">
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>0%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            </div>
+        </div>
+
+        <!-- Investimento -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Investimento</p>
+                    <h2 class="metric-value" id="total-investment">R$ 0,00</h2>
+                </div>
+                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                    <i class="fas fa-coins"></i>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm" id="investment-change">
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>0%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <!-- ROAS -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">ROAS</p>
+                    <h2 class="metric-value" id="roas">0.00x</h2>
+                </div>
+                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <i class="fas fa-percentage"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-sm text-gray-500">
+                Retorno sobre investimento em anúncios
+            </div>
+        </div>
+
+        <!-- Taxa de Conversão -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Taxa de Conversão</p>
+                    <h2 class="metric-value" id="conversion-rate">0%</h2>
+                </div>
+                <div class="p-3 rounded-full bg-pink-100 text-pink-600">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-sm text-gray-500">
+                Proporção de vendas por visitante
+            </div>
+        </div>
+
+        <!-- Ticket Médio -->
+        <div class="card p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="metric-label">Ticket Médio</p>
+                    <h2 class="metric-value" id="average-ticket">R$ 0,00</h2>
+                </div>
+                <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <i class="fas fa-receipt"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-sm text-gray-500">
+                Valor médio por compra
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Faturamento e Investimento -->
+        <div class="card p-6">
+            <h3 class="font-bold text-lg mb-4">Faturamento x Investimento</h3>
+            <div class="chart-container">
+                <canvas id="revenue-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- ROAS e Lucro -->
+        <div class="card p-6">
+            <h3 class="font-bold text-lg mb-4">ROAS e Lucro</h3>
+            <div class="chart-container">
+                <canvas id="roas-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+ <div class="flex items-center gap-2 mb-2">
+  <h2 class="text-xl font-bold">Produtos Mais Vendidos</h2>
+  <button id="toggleProductsBtn" class="focus:outline-none" title="Ocultar/Mostrar produtos">
+    <i id="productsEyeIcon" class="fas fa-eye"></i>
+  </button>
+</div>
+
+<table class="w-full min-w-max">
+  <thead>
+    <tr>
+      <th>Posição</th>
+      <th>Produto</th>
+      <th>Vendas</th>
+      <th>Faturamento</th>
+      <th>% do Total</th>
+    </tr>
+  </thead>
+  <tbody id="top-products">
+    <!-- Products will be inseridos pelo JS -->
+  </tbody>
+</table>
+        </div>
+    </div>
+
+   <!-- Products Section -->
+    <div class="card p-6 mb-8">
+        <h3 class="font-bold text-lg mb-4">Vendas Por Idioma</h3>
+        <div class="table-container">
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th>Posição</th>
+                        <th>Idioma</th>
+                         <th>Vendas</th>
+                        <th>Faturamento</th>
+                        <th>% do Total</th>
+                    </tr>
+                </thead>
+                <tbody id="top-idioma">
+                    <!-- Products will be inserted here by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center text-gray-500 text-sm">
+        <p>Dashboard atualizado com dados estáticos extraídos em 3 de fevereiro de 2026 às 19:45</p>
+        <p class="mt-2">&copy; Feito por Yep Agencia</p>
+    </div>
+
+   <!-- Dashboard Data -->
+<script>
+    // Pre-processed data from the Google Sheet
+    const dashboardData = {
+        "periods": {
+           "Hoje": {
+                "revenue": 2201.88,
+                "sales": 23,
+                "profit": 713.32,
+                "investment": 1054.16,
+                "roas": 2.09,
+               "conversionRate": 6.04,
+                "averageTicket": 95.73,
+                "students": 22,
+                "refundRate": 0.00,
+                "topProducts": [
+                    { "name": "Pack do Gerente de Projetos", "sales": 12, "revenue": 1177.24, "percentage": 52.17 },
+                       { "name": "Pack de administrador de proyectos exitoso", "sales": 3, "revenue": 145.41, "percentage": 13.04 },
+                     { "name": "Power Slides Agile", "sales": 1, "revenue": 39, "percentage": 4.35 },
+                     { "name": "Pack PMO de Sucesso", "sales": 1, "revenue": 97, "percentage": 4.35 },
+                      { "name": "Successful Project Manager Pack", "sales": 1, "revenue": 145.41, "percentage": 4.35 }
+                ].sort((a, b) => b.sales - a.sales), // Removido o ']]' extra aqui
+                "topProductsIdioma": [
+                    { "name": "Português", "sales": 15, "revenue": 1620.24, "percentage": 65.22 },
+                    { "name": "Inglês", "sales": 1, "revenue": 145.41, "percentage": 4.35 },
+                    { "name": "Espanhol", "sales": 3, "revenue": 436.23, "percentage": 13.04 }
+                ].sort((a, b) => b.sales - a.sales) // Removido o ']]' extra aqui
+            },
+                  "Ontem": {
+                "revenue": 3949.56,
+                "sales": 39,
+                "profit": 1548.60,
+                "investment": 1596.27,
+                "roas": 2.47,
+               "conversionRate": 6.17,
+                "averageTicket": 101.27,
+                "students": 30,
+                "refundRate": 0.00,
+               "topProducts": [
+    { "name": "Pack do Gerente de Projetos", "sales": 13, "revenue": 1260.99, "percentage": 33.33 },
+       { "name": "Successful Project Manager Pack", "sales": 8, "revenue": 436.08000000000004, "percentage": 20.51 },
+     { "name": "Pack de administrador de proyectos exitoso", "sales": 5, "revenue": 438.16999999999996, "percentage": 12.82 },
+     { "name": "Checklist Líder de Projetos de Sucesso", "sales": 2, "revenue": 78.03999999999999, "percentage": 5.13 },
+      { "name": "Pack PMO de Sucesso", "sales": 1, "revenue": 66.98, "percentage": 2.56 }
+].sort((a, b) => b.sales - a.sales), // Removido o ']]' extra aqui
+                "topProductsIdioma": [
+                    { "name": "Português", "sales": 16, "revenue": 1874.99, "percentage": 41.03 },
+                    { "name": "Inglês", "sales": 8, "revenue": 1136.64, "percentage": 20.51 },
+                    { "name": "Espanhol", "sales": 5, "revenue": 693.73, "percentage": 12.82 }
+                ].sort((a, b) => b.sales - a.sales) // Removido o ']]' extra aqui
+            },
+            "7": {
+                "revenue": 21185.80,
+                "sales": 233,
+                "profit": 7673.23,
+                "investment": 9218.70,
+                "roas": 2.30,
+                "conversionRate": 5.66,
+                "averageTicket": 90.93,
+                "students": 169,
+                "refundRate": 0.00,
+               "topProducts": [
+    { "name": "Pack do Gerente de Projetos", "sales": 78, "revenue": 7477.86, "percentage": 33.48 },
+       { "name": "Successful Project Manager Pack", "sales": 26, "revenue": 2045.1800000000005, "percentage": 11.16 },
+     { "name": "Pack de administrador de proyectos exitoso", "sales": 23, "revenue": 1881.6299999999999, "percentage": 9.87 },
+     { "name": "Checklist Líder de Projetos de Sucesso", "sales": 16, "revenue": 624.18, "percentage": 6.87 },
+      { "name": "Pack PMO de Sucesso", "sales": 14, "revenue": 997.94, "percentage": 6.01 }
+].sort((a, b) => b.sales - a.sales), // Removido o ']]' extra aqui
+           "topProductsIdioma": [
+    { "name": "Português", "sales": 123, "revenue": 12737.23, "percentage": 52.79 },
+    { "name": "Inglês", "sales": 26, "revenue": 3561.28, "percentage": 11.16 },
+    { "name": "Espanhol", "sales": 23, "revenue": 3258.16, "percentage": 9.87 }
+].sort((a, b) => b.sales - a.sales) // Removido o ']]' extra aqui
+},
+            "14": {
+                "revenue": 42408.82,
+                "sales": 466,
+                "profit": 13902.50,
+                "investment": 19060.20,
+                "roas": 2.22,
+               "conversionRate": 11.31,
+                "averageTicket": 91.01,
+                "students": 329,
+                "refundRate": 1.46,
+                // CORRIGIDO AQUI: topProducts agora contém os produtos, e topProductsIdioma os idiomas
+              "topProducts": [
+    { "name": "Pack do Gerente de Projetos", "sales": 151, "revenue": 14641.59, "percentage": 32.40 },
+       { "name": "Successful Project Manager Pack", "sales": 50, "revenue": 4418.379999999999, "percentage": 10.73 },
+     { "name": "Pack de administrador de proyectos exitoso", "sales": 47, "revenue": 3639.1200000000003, "percentage": 10.09 },
+     { "name": "Checklist Líder de Projetos de Sucesso", "sales": 34, "revenue": 1346.82, "percentage": 7.30 },
+      { "name": "Pack PMO de Sucesso", "sales": 25, "revenue": 1770.6000000000001, "percentage": 5.36 }
+].sort((a, b) => b.sales - a.sales), // Removido o ']]' extra aqui
+                "topProductsIdioma": [
+                    { "name": "Português", "sales": 251, "revenue": 26061.57, "percentage": 53.86 },
+                    { "name": "Inglês", "sales": 50, "revenue": 7044.16, "percentage": 10.73 },
+                    { "name": "Espanhol", "sales": 47, "revenue": 6663.59, "percentage": 10.09 }
+                ].sort((a, b) => b.sales - a.sales) // Removido o ']]' extra aqui
+            },
+            "30": {
+                "revenue": 88277.74,
+                "sales": 953,
+                "profit": 28353.80,
+                "investment": 40369.73,
+                "roas": 2.19,
+               "conversionRate": 6.27,
+                "averageTicket": 92.63,
+                "students": 674,
+                "refundRate": 2.32,
+               "topProducts": [
+    { "name": "Pack do Gerente de Projetos", "sales": 305, "revenue": 29287.950000000008, "percentage": 32.00 },
+       { "name": "Pack de administrador de proyectos exitoso", "sales": 130, "revenue": 10349.870000000003, "percentage": 13.64 },
+     { "name": "Successful Project Manager Pack", "sales": 92, "revenue": 8301.910000000002, "percentage": 9.65 },
+     { "name": "Checklist Líder de Projetos de Sucesso", "sales": 61, "revenue": 2400.0099999999998, "percentage": 6.40 },
+      { "name": "Pack PMO de Sucesso", "sales": 45, "revenue": 3170.56, "percentage": 4.72 }
+].sort((a, b) => b.sales - a.sales), // Removido o ']]' extra aqui
+                "topProductsIdioma": [
+                    { "name": "Português", "sales": 490, "revenue": 50305.55, "percentage": 51.42 },
+                    { "name": "Inglês", "sales": 92, "revenue": 13248.81, "percentage": 9.65 },
+                    { "name": "Espanhol", "sales": 130, "revenue": 18734.97, "percentage": 13.64 }
+                ].sort((a, b) => b.sales - a.sales) // Removido o ']]' extra aqui
+            }
+        },
+        "dailyData": {
+          "dates": ["05/01/2026", "06/01/2026", "07/01/2026", "08/01/2026", "09/01/2026", "10/01/2026", "11/01/2026", "12/01/2026", "13/01/2026", "14/01/2026", "15/01/2026", "16/01/2026", "17/01/2026", "18/01/2026", "19/01/2026", "20/01/2026", "21/01/2026", "22/01/2026", "23/01/2026", "24/01/2026", "25/01/2026", "26/01/2026", "27/01/2026", "28/01/2026", "29/01/2026", "30/01/2026", "31/01/2026", "01/02/2026", "02/02/2026", "03/02/2026"],
+            "revenue": [1445.66, 1737.91, 3299.48, 1580.61, 6147.31, 5419.65, 3035.08, 931.68, 972.53, 3062.73, 2840.65, 6445.09, 1067.60, 716.83, 2970.88, 4195.23, 2175.59, 3205.45, 5711.50, 1276.99, 4850.98, 1506.96, 2495.55, 3212.43, 1600.61, 3088.42, 3608.06, 3524.84, 3949.56, 2201.88],
+              "investment": [845.66, 477.19, 1015.93, 756.05, 1927.61, 2685.50, 1050.59, 863.95, 1014.31, 1575.20, 973.58, 2713.52, 1209.68, 1053.50, 1184.72, 1962.54, 815.82, 1115.35, 2695.97, 1135.14, 1868.19, 568.23, 1642.80, 1444.84, 832.35, 1346.88, 1546.29, 1397.91, 1596.27, 1054.16],               
+            "profit": [325.37, 909.59, 1642.47, 494.94, 2848.39, 1650.70, 830.26, -321.86, -239.07, 813.07, 1313.60, 2449.02, -344.82, -481.76, 1178.66, 1382.74, 772.23, 1376.22, 1309.70, -95.97, 1936.59, 637.00, 293.50, 1075.68, 446.97, 1151.02, 1347.00, 1390.64, 1548.60, 713.32],
+            "sales": [18, 20, 41, 17, 59, 61, 31, 9, 10, 37, 25, 74, 12, 7, 24, 42, 28, 36, 59, 15, 50, 16, 29, 32, 16, 41, 39, 43, 39, 23]
+       }
+    };
+
+
+        // Format number as currency
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2
+            }).format(value);
+        }
+
+        // Format number as percentage
+        function formatPercentage(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'percent',
+                minimumFractionDigits: 2
+            }).format(value / 100);
+        }
+
+        // Update metrics based on selected period
+        function updateMetrics(period) {
+            const data = dashboardData.periods[period];
+            
+            // Update main metrics
+            document.getElementById('total-revenue').textContent = formatCurrency(data.revenue);
+            document.getElementById('total-sales').textContent = data.sales;
+            document.getElementById('total-profit').textContent = formatCurrency(data.profit);
+            document.getElementById('total-investment').textContent = formatCurrency(data.investment);
+
+            // Update secondary metrics
+            document.getElementById('roas').textContent = data.roas.toFixed(2) + 'x';
+            document.getElementById('conversion-rate').textContent = data.conversionRate.toFixed(2) + '%';
+            document.getElementById('average-ticket').textContent = formatCurrency(data.averageTicket);
+
+            // Update changes (just for demonstration)
+            // In a real application, these would be calculated based on previous periods
+            const changeValues = {
+                "revenue": data.revenue > 30000 ? 12.5 : 8.3,
+                "sales": data.sales > 400 ? 10.2 : 5.8,
+                "profit": data.profit > 10000 ? 15.7 : 7.2,
+                "investment": data.investment > 20000 ? 9.8 : 4.5
+            };
+            
+            document.getElementById('revenue-change').innerHTML = `
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>${changeValues.revenue.toFixed(1)}%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            `;
+            
+            document.getElementById('sales-change').innerHTML = `
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>${changeValues.sales.toFixed(1)}%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            `;
+            
+            document.getElementById('profit-change').innerHTML = `
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>${changeValues.profit.toFixed(1)}%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            `;
+            
+            document.getElementById('investment-change').innerHTML = `
+                <span class="positive">
+                    <i class="fas fa-arrow-up mr-1"></i>${changeValues.investment.toFixed(1)}%
+                </span>
+                <span class="ml-2 text-gray-500">vs. período anterior</span>
+            `;
+
+// Array para guardar os nomes reais dos produtos
+let originalProductNames = [];
+
+// Esta função renderiza os produtos, escondendo nomes se necessário
+function renderProducts(hiddenNames = true) {
+  const productsTable = document.getElementById('top-products');
+  productsTable.innerHTML = '';
+
+  data.topProducts.forEach((product, index) => {
+    // Guarda o nome real uma vez só
+    if (!originalProductNames[index]) {
+      originalProductNames[index] = product.name;
+    }
+    // Nome visível ou oculto
+    const displayName = hiddenNames ? '••••••••••••••••••' : originalProductNames[index];
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <div class="product-rank ${index < 3 ? 'rank-' + (index + 1) : ''}">
+          ${index + 1}
+        </div>
+      </td>
+      <td class="product-name">${displayName}</td>
+      <td>${product.sales}</td>
+      <td>${formatCurrency(product.revenue)}</td>
+      <td>${product.percentage.toFixed(2)}%</td>
+    `;
+    productsTable.appendChild(row);
+  });
+}
+
+// Controle único para ocultar nomes do projeto E dos produtos
+const projectName = document.getElementById('projectName');
+const toggleBtn = document.getElementById('toggleProjectNameBtn');
+const eyeIcon = document.getElementById('eyeIcon');
+
+let hidden = true; // já inicia oculto
+
+// Botão "olho" controla ambos
+toggleBtn.addEventListener('click', () => {
+  hidden = !hidden;
+  if (hidden) {
+    projectName.textContent = '•••••••••••••••';
+    eyeIcon.classList.remove('fa-eye');
+    eyeIcon.classList.add('fa-eye-slash');
+  } else {
+    projectName.textContent = 'Lidere Seu Projeto';
+    eyeIcon.classList.remove('fa-eye-slash');
+    eyeIcon.classList.add('fa-eye');
+  }
+  renderProducts(hidden); // sempre sincroniza
+});
+
+// Já inicia a página com tudo oculto
+document.addEventListener('DOMContentLoaded', function() {
+  projectName.textContent = '•••••••••••••••';
+  eyeIcon.classList.remove('fa-eye');
+  eyeIcon.classList.add('fa-eye-slash');
+  renderProducts(true);
+});
+
+// Renderize a tabela ao carregar (pode ser dentro da sua função principal)
+renderProducts();
+
+// Update top idiomas table (corrigido)
+const productsIdiomaTable = document.getElementById('top-idioma');
+productsIdiomaTable.innerHTML = '';
+
+data.topProductsIdioma.forEach((product, index) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <div class="product-rank ${index < 3 ? 'rank-' + (index + 1) : ''}">
+                ${index + 1}
+            </div>
+        </td>
+        <td>${product.name}</td>
+        <td>${product.sales}</td>
+        <td>${formatCurrency(product.revenue)}</td>
+        <td>${product.percentage.toFixed(2)}%</td>
+    `;
+    productsIdiomaTable.appendChild(row);
+});
+
+          
+            // Update charts
+            updateCharts(period);
+        }
+
+        // Update charts based on selected period
+    function updateCharts(period) {
+    let dates, revenue, investment, profit;
+
+  if (period === 'Hoje' || period === 'Ontem') {
+        // Sempre mostrar os últimos 5 dias
+        days = 5;
+        dates = dashboardData.dailyData.dates.slice(-days);
+        revenue = dashboardData.dailyData.revenue.slice(-days);
+        investment = dashboardData.dailyData.investment.slice(-days);
+        profit = dashboardData.dailyData.profit.slice(-days);
+    } else {
+        // Período em dias (7, 14, 30)
+        const days = parseInt(period);
+        dates = dashboardData.dailyData.dates.slice(-days);
+        revenue = dashboardData.dailyData.revenue.slice(-days);
+        investment = dashboardData.dailyData.investment.slice(-days);
+        profit = dashboardData.dailyData.profit.slice(-days);
+    }
+
+            
+            // Calculate ROAS for each day
+            const roas = revenue.map((r, i) => r / investment[i]);
+            
+            // Update Revenue Chart
+            if (window.revenueChart) {
+                window.revenueChart.destroy();
+            }
+            
+            const revenueCtx = document.getElementById('revenue-chart').getContext('2d');
+            window.revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Faturamento',
+                            data: revenue,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Investimento',
+                            data: investment,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatCurrency(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update ROAS Chart
+            if (window.roasChart) {
+                window.roasChart.destroy();
+            }
+            
+            const roasCtx = document.getElementById('roas-chart').getContext('2d');
+            window.roasChart = new Chart(roasCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'ROAS',
+                            data: roas,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Lucro',
+                            data: profit,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (label.includes('ROAS')) {
+                                            label += context.parsed.y.toFixed(2) + 'x';
+                                        } else {
+                                            label += formatCurrency(context.parsed.y);
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'ROAS'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2) + 'x';
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Lucro (R$)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Set up period selector
+        document.querySelectorAll('.period-selector button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.period-selector button').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Update metrics with selected period
+                const period = this.getAttribute('data-period');
+                updateMetrics(period);
+            });
+        });
+
+        // Initialize with 7-day period
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMetrics('Hoje');
+        });
+    </script>
+
+  <script>
+ const projectName = document.getElementById('projectName');
+const toggleBtn = document.getElementById('toggleProjectNameBtn');
+const eyeIcon = document.getElementById('eyeIcon');
+
+let hidden = true; // Já inicia oculto!
+
+// --- Função que renderiza produtos (deve estar no escopo global):
+// function renderProducts(hiddenNames = false) { ... }
+
+// Ao clicar, oculta/mostra nome do projeto E nomes dos produtos juntos
+toggleBtn.addEventListener('click', () => {
+  hidden = !hidden;
+  if (hidden) {
+    projectName.textContent = '•••••••••••••••';
+    eyeIcon.classList.remove('fa-eye');
+    eyeIcon.classList.add('fa-eye-slash');
+  } else {
+    projectName.textContent = 'Lidere Seu Projeto';
+    eyeIcon.classList.remove('fa-eye-slash');
+    eyeIcon.classList.add('fa-eye');
+  }
+  // Sempre sincroniza o estado dos produtos
+  renderProducts(hidden);
+});
+
+// Já inicia ocultando ambos ao carregar a página:
+document.addEventListener('DOMContentLoaded', function() {
+  projectName.textContent = '•••••••••••••••';
+  eyeIcon.classList.remove('fa-eye');
+  eyeIcon.classList.add('fa-eye-slash');
+  renderProducts(true);
+});
+
+// Função de logout
+async function logout() {
+    if (!confirm('Tem certeza que deseja sair?')) return;
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            alert('Erro ao sair. Tente novamente.');
+            return;
+        }
+        window.location.href = 'login.html';
+    } catch (err) {
+        alert('Erro inesperado ao sair. Redirecionando...');
+        window.location.href = 'login.html';
+    }
+}
+
+// Exibir nome do usuário no botão de boas-vindas
+function updateUserInterface() {
+    if (!currentUser) return;
+    const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+    document.getElementById('userWelcome').textContent = `Olá, ${userName}`;
+}
+
+// Assim que carregar a página (depois da autenticação Supabase)
+document.addEventListener('DOMContentLoaded', async function() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.user) {
+        window.location.href = 'login.html';
+        return;
+    }
+    currentUser = session.user;
+    updateUserInterface();
+    // ... seu código de dashboard continua aqui
+});
+    
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"ce64546f879845f695523de4ca7e739b","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
