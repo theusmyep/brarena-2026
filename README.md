@@ -75,6 +75,21 @@ curl -X POST "$VITE_SUPABASE_URL/functions/v1/track_rd_event" \
 - Idempotência: o clique WhatsApp é deduplicado por `click_id`; eventos RD por `event_id` (se enviar) ou chave derivada.
 - Deduplicação: unificação por identidades (`rd_lead_id`, `phone_e164`, `email`, `gclid`) e merge dos registros.
 
+## RPCs (alternativa rápida ao deploy de Edge Functions)
+Se você preferir chamar direto o Postgres via REST (como RPC), use os endpoints abaixo.
+
+Base: `${VITE_SUPABASE_URL}/rest/v1/rpc`
+
+### 1) WhatsApp click (RPC)
+POST `/ingest_whatsapp_click`
+
+### 2) WhatsApp message (RPC)
+POST `/ingest_whatsapp_message`
+- Use quando a mensagem chegar e você já tiver o telefone (é o que “cola” o clique no contato).
+
+### 3) RD event (RPC)
+POST `/ingest_rd_event`
+
 ## Realtime
 - A migração já adiciona `public.lead_events` na publicação `supabase_realtime`. Se o feed não atualizar ao vivo, confira no painel do Supabase se o Realtime está habilitado no projeto.
 
