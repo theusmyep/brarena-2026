@@ -1,12 +1,11 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { BarChart3, Link2, LogOut, Users } from 'lucide-react'
+import { BarChart3, LogOut, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   { to: '/leads', label: 'Leads', icon: Users },
-  { to: '/integracoes', label: 'Integrações', icon: Link2 },
 ]
 
 export default function AppShell() {
@@ -73,4 +72,3 @@ export default function AppShell() {
     </div>
   )
 }
-
