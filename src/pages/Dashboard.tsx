@@ -93,7 +93,7 @@ export default function Dashboard() {
   }, [realtime.lastInsertAt, load])
 
   const leadsTotal = leads.length
-  const whatsappClicks = events.filter((e) => e.event_type === 'whatsapp_click').length
+  const whatsappMessages = events.filter((e) => e.event_type === 'whatsapp_message').length
   const rdEvents = events.filter((e) => e.event_type === 'rd_event').length
   const conversions = events.filter((e) => e.event_type === 'rd_event' && e.payload?.rd_event_type === 'conversion').length
 
@@ -135,7 +135,7 @@ export default function Dashboard() {
     for (const e of events) {
       const src = (e.lead_utm_source || 'unknown').toString()
       const item = map.get(src) ?? { source: src, clicks: 0, conversions: 0, rate: 0 }
-      if (e.event_type === 'whatsapp_click') item.clicks += 1
+      if (e.event_type === 'whatsapp_message') item.clicks += 1
       if (e.event_type === 'rd_event' && e.payload?.rd_event_type === 'conversion') item.conversions += 1
       item.rate = item.clicks ? Math.round((item.conversions / item.clicks) * 1000) / 10 : 0
       map.set(src, item)
@@ -186,9 +186,13 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <KpiCard label="Leads (canônicos)" value={loading ? '—' : String(leadsTotal)} hint={`Desde ${format(from, 'dd/MM')}`} />
-        <KpiCard label="Cliques WhatsApp" value={loading ? '—' : String(whatsappClicks)} />
+        <KpiCard label="Mensagens WhatsApp" value={loading ? '—' : String(whatsappMessages)} />
         <KpiCard label="Eventos RD" value={loading ? '—' : String(rdEvents)} />
-        <KpiCard label="Taxa de conversão" value={loading ? '—' : pct(conversions, whatsappClicks)} hint="Conversões RD / cliques" />
+        <KpiCard
+          label="Taxa de conversão"
+          value={loading ? '—' : pct(conversions, whatsappMessages)}
+          hint="Conversões RD / mensagens"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -233,7 +237,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 lg:col-span-2">
-          <div className="text-sm font-semibold">Conversões por fonte (top 8)</div>
+          <div className="text-sm font-semibold">Mensagens e conversões por fonte (top 8)</div>
           <div className="mt-3 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={conversionsBySource} margin={{ left: 12, right: 12, top: 8, bottom: 0 }}>
