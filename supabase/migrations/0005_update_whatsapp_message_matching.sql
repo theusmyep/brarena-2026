@@ -4,7 +4,8 @@ create or replace function public.ingest_whatsapp_message(
   p_phone text,
   p_name text default null,
   p_click_id text default null,
-  p_payload jsonb default '{}'::jsonb
+  p_payload jsonb default '{}'::jsonb,
+  p_window_minutes int default 5
 )
 returns table (lead_id uuid, inserted boolean, matched_click_id text)
 language plpgsql
@@ -18,6 +19,7 @@ declare
   v_payload jsonb;
   v_click_id text := nullif(trim(p_click_id), '');
   v_match_click_id text;
+  v_window interval := make_interval(mins => greatest(1, p_window_minutes));
 begin
   if p_event_key is null or length(trim(p_event_key)) = 0 then
     raise exception 'event_key is required';
@@ -42,10 +44,11 @@ begin
     from public.lead_events le
     join public.leads l on l.id = le.lead_id
     where le.event_type = 'whatsapp_click'
-      and le.occurred_at >= (p_occurred_at - interval '90 minutes')
+      and le.occurred_at >= (p_occurred_at - v_window)
       and le.occurred_at <= p_occurred_at
       and l.phone_e164 is null
       and l.canonical_id is null
+      and l.discarded_at is null
     order by le.occurred_at desc
     limit 1;
   end if;
@@ -73,6 +76,7 @@ begin
 
   update public.leads
   set
+    discarded_at = null,
     phone_e164 = coalesce(v_phone, phone_e164),
     name = coalesce(nullif(trim(p_name), ''), name)
   where id = v_lead;
@@ -89,7 +93,7 @@ begin
   v_payload := coalesce(p_payload, '{}'::jsonb);
   v_payload := jsonb_set(v_payload, '{match}', jsonb_build_object(
     'click_id', coalesce(v_click_id, v_match_click_id),
-    'window_minutes', 90,
+    'window_minutes', greatest(1, p_window_minutes),
     'matched', (v_click_lead is not null)
   ));
 
@@ -103,11 +107,15 @@ begin
 end;
 $$;
 
+revoke execute on function public.ingest_whatsapp_message(text,timestamptz,text,text,text,jsonb) from anon, authenticated;
+
 grant execute on function public.ingest_whatsapp_message(
   text,
   timestamptz,
   text,
   text,
   text,
-  jsonb
+  jsonb,
+  int
 ) to anon, authenticated;
+

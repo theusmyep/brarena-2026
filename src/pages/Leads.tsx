@@ -29,9 +29,8 @@ export default function Leads() {
     setError(null)
 
     let q = supabase
-      .from('leads')
+      .from('leads_live')
       .select('id,canonical_id,created_at,name,email,phone_e164,utm_source,utm_campaign,quality')
-      .is('canonical_id', null)
       .order('created_at', { ascending: false })
       .limit(100)
 

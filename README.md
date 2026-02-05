@@ -87,6 +87,18 @@ POST `/ingest_whatsapp_click`
 POST `/ingest_whatsapp_message`
 - Use quando a mensagem chegar e você já tiver o telefone (é o que “cola” o clique no contato).
 
+Parâmetros importantes:
+- `p_window_minutes` (default: 5): janela para casar a mensagem com o último clique sem telefone (regra “last-click-wins”).
+
+## Descarte de cliques órfãos
+Para não poluir métricas com cliques que não viraram conversa, marque como descartados os leads que tiveram apenas `whatsapp_click` e não receberam mensagem/conversão dentro de X minutos.
+
+RPC:
+- POST `/rest/v1/rpc/discard_orphan_whatsapp_clicks`
+- Body: `{ "p_minutes": 10 }`
+
+Recomendação: chamar via n8n em um cron (ex.: a cada 1–5 minutos).
+
 ### 3) RD event (RPC)
 POST `/ingest_rd_event`
 

@@ -22,28 +22,12 @@ type EventRow = {
   occurred_at: string
   payload: Record<string, unknown>
   lead_id: string
-  lead?:
-    | {
-        name: string | null
-        email: string | null
-        phone_e164: string | null
-        utm_source: string | null
-        utm_campaign: string | null
-        quality: string
-      }
-    | Array<{
-        name: string | null
-        email: string | null
-        phone_e164: string | null
-        utm_source: string | null
-        utm_campaign: string | null
-        quality: string
-      }>
-    | null
-}
-
-function leadObj(e: EventRow) {
-  return Array.isArray(e.lead) ? e.lead[0] ?? null : e.lead ?? null
+  lead_name: string | null
+  lead_email: string | null
+  lead_phone_e164: string | null
+  lead_utm_source: string | null
+  lead_utm_campaign: string | null
+  lead_quality: string | null
 }
 
 function pct(numerator: number, denominator: number) {
@@ -68,15 +52,14 @@ export default function Dashboard() {
 
     const [{ data: leadsData, error: leadsError }, { data: eventsData, error: eventsError }] = await Promise.all([
       supabase
-        .from('leads')
+        .from('leads_live')
         .select('id,canonical_id,created_at,quality,utm_source')
-        .is('canonical_id', null)
         .gte('created_at', fromIso)
         .order('created_at', { ascending: true }),
       supabase
-        .from('lead_events')
+        .from('lead_events_live_expanded')
         .select(
-          'id,event_type,event_key,occurred_at,payload,lead_id,lead:leads!lead_events_lead_id_fkey(name,email,phone_e164,utm_source,utm_campaign,quality)'
+          'id,event_type,event_key,occurred_at,payload,lead_id,lead_name,lead_email,lead_phone_e164,lead_utm_source,lead_utm_campaign,lead_quality'
         )
         .gte('occurred_at', fromIso)
         .order('occurred_at', { ascending: false })
@@ -150,7 +133,7 @@ export default function Dashboard() {
   const conversionsBySource = useMemo(() => {
     const map = new Map<string, { source: string; clicks: number; conversions: number; rate: number }>()
     for (const e of events) {
-      const src = (leadObj(e)?.utm_source || 'unknown').toString()
+      const src = (e.lead_utm_source || 'unknown').toString()
       const item = map.get(src) ?? { source: src, clicks: 0, conversions: 0, rate: 0 }
       if (e.event_type === 'whatsapp_click') item.clicks += 1
       if (e.event_type === 'rd_event' && e.payload?.rd_event_type === 'conversion') item.conversions += 1
@@ -275,7 +258,7 @@ export default function Dashboard() {
                   <div className="text-xs text-zinc-500">{format(new Date(e.occurred_at), 'dd/MM HH:mm:ss')}</div>
                 </div>
                 <div className="mt-1 text-xs text-zinc-400">
-                  {leadObj(e)?.utm_source ? `Fonte: ${leadObj(e)?.utm_source}` : 'Fonte: —'}
+                  {e.lead_utm_source ? `Fonte: ${e.lead_utm_source}` : 'Fonte: —'}
                 </div>
                 <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">{e.event_key}</div>
               </div>
